@@ -1,0 +1,94 @@
+---
+title: "ETF Map Pre-Rendered with Leaflet"
+resource_files:
+- etfData.RDat
+output: 
+  flexdashboard::flex_dashboard
+runtime: shiny_prerendered
+---
+
+```{r, context="setup", include=FALSE}
+library(leaflet)
+library(dplyr)
+library(httr)
+library(dygraphs)
+library(quantmod)
+```
+
+```{r, context="data", cache=TRUE, include=FALSE}
+
+# The chunk will be executed during render and any R objects it creates will be saved to an .RData file, which will then be loaded during Shiny server startup. 
+
+library(rgdal) # only need this package for this part
+
+# Load data here.  Remember, we saved the map and ETF data in the shapefile when we 
+# imported, tidied and built them in the Notebook.
+
+load('etfData.RDat')
+
+# The next lines are taken straight from the Notebook. We just need
+# to rebuild that map.
+ytdPal <- colorQuantile("Blues", world_etf$ytd, n = 20)
+
+ytdPopup <- paste0("<strong>Country: </strong>", 
+                world_etf$name,
+                "<br><strong> Year-to-date: </strong>", 
+                world_etf$ytd, "%")
+
+# the map is the "data" we want saved!
+leaf_world_etf <- leaflet(world_etf) %>%
+  addProviderTiles("CartoDB.Positron") %>% 
+  setView(lng =  20, lat =  15, zoom = 2) %>%
+      addPolygons(stroke = FALSE, smoothFactor = 0.2, fillOpacity = .7,
+      color =~ytdPal(ytd), layerId = ~ticker, popup = ytdPopup)
+```
+
+
+World Map Selector {data-orientation=rows}
+=====================================
+
+Row {data-height=650}
+-------------------------------------
+
+### World Map 2
+
+```{r, echo = FALSE}
+leafletOutput("map1")
+```
+
+```{r, context = "server"}
+# we render the map for each user, this takes a second and isn't avoidable
+output$map1 <- renderLeaflet({
+    leaf_world_etf
+})
+```
+
+Row {data-height=350}
+-------------------------------------
+
+### Country ETF
+
+```{r, echo = FALSE}
+dygraphOutput("dygraph")
+```
+
+```{r, context = "server"}
+  
+clickedCountry <- eventReactive(input$map1_shape_click, {
+   return(input$map1_shape_click$id)
+})
+ 
+output$dygraph <- renderDygraph({
+  validate(need(clickedCountry(), "There is no iShares ETF for that country"))
+  etf <- getSymbols(as.character(clickedCountry()), auto.assign = FALSE)
+  dygraph(Cl(etf), main = clickedCountry())  %>%
+    dyRangeSelector(height = 20) %>%
+    dyShading(from = "2007-12-01", to = "2009-06-01", color = "#FFE6E6") 
+})
+   
+```
+
+
+
+
+
