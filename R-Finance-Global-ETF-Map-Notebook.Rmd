@@ -1,11 +1,10 @@
 ---
 title: "Global ETF Map Paper"
 output:
-  pdf_document: default
   html_notebook: default
 ---
 
-In this presentation, we will construct a Shiny app that allows users to graph country ETF price data by clicking on a world map. It might be hard to visualize exactly what that means, so let's a have a quick look at the final app [here](http://colorado.rstudio.com:3939/content/206/). 
+In this presentation, we will construct a Shiny app that allows users to graph country ETF price data by clicking on a world map. It might be hard to visualize exactly what that means, so let's a have a quick look at the final app here: http://colorado.rstudio.com:3939/Global-ETF-Map/. 
 
 From a substantive perspective, the app is simple in that it just displays price histories.  But our learnings  are diverse and broadly applicable: an introduction to the Notebooks-to-flexdashboards workflow and the reproducibility it engenders, spatial dataframe and map-making skills, adding our own stock data to a map, wiring up two HTML widgets to communicate with one another and creating a useful app for users who don't want to remember unintuitive ticker symbols.
 
@@ -19,11 +18,9 @@ Next, we pass those ticker symbols to the getSymbols() function and download the
 
 Once we have confirmed that our ticker symbols are valid, we add ETF data to the shapefile, making them accessible via clicks on the map. At this step, we will be thankful that when we created a dataframe in step 1, we used the same country names as appear on the map: that forethought will allow us to do an easy ‘merge’ of the data.
 
-Once we have a shapefile with our ETF tickers added, we’ll save it to a .RDat file that we load into our Shiny app. That will conclude our time here in the Notebook and then we'll toggle over to the flexdashboard
+Once we have a shapefile with our ETF tickers added, we’ll save it to a .RDat file that we load into our Shiny app. That will conclude our time here in the Notebook and then we'll toggle over to the flexdashboard.
 
-Without further adieu, the ETF data is available [here](https://www.ishares.com/us/products/etf-product-list#!type=ishares&tab=performance&view=list&fc=43537%7C43538%7C43539%7C43540%7C43541%7C43543%7C43544%7C43545%7C43550%7C43558%7C43561%7C43562%7C43568%7C43570%7C43571%7C43576%7C43577%7C43578%7C43579%7C43582%7C43583%7C43592%7C43593%7C43595%7C43605%7C43606%7C43607%7C43609%7C43612%7C44070%7C43614%7C43616%7C43617%7C43618%7C43621%7C43622%7C43624%7C43628%7C43629%7C43630%7C43631&subtab=priceMonthly). 
-
-The tickers, country names and year-to-date performance are pasted below.
+Without further adieu, the ishares ETF tickers, country names and year-to-date performance are pasted below.
 
 ```{r, message = FALSE}
 # Let's build a dataframe to store these ticker symbols, country names and YTD numbers.
@@ -226,18 +223,18 @@ This map is going to play a crucial role in our Shiny app and the last step is t
 save(world_etf, file = 'etfData.RDat')
 ```
 
-On to the Shiny app (which, in real life, would require its own separate Rmd file). 
+On to the Shiny app (which, in real life, would require its own separate Rmd file - the remaining code chunks are not meant to be run in this Notebook and all include eval = FALSE for that reason; they must be run in the separate Rmd file with runtime: shiny). 
 
-We will use the flexdashboards package to create this app in an Rmarkdown file. If you are accustomed to building Shiny apps in app.r files, this will be a nice introduction to flexdashboards - no more UI and server logic, as we'll see! 
+We will use the flexdashboards package to create this app. If you are accustomed to building Shiny apps in app.r files, this will be a nice introduction to flexdashboards - no more UI and server logic, as we'll see! 
 
-First, a quick look at the YAML header: make note of the runtime: shiny and output lines. 
+First, a quick look at the YAML header. 
 
-```{r}
-#title: "Global ETF Map"
-#runtime: shiny
-#output:
- # flexdashboard::flex_dashboard:
-  #  source_code: embed
+```{r, eval = FALSE}
+title: "Global ETF Map"
+runtime: shiny
+output:
+ flexdashboard::flex_dashboard:
+  source_code: embed
 ```
 
 Now, on to the first code chunk, where we load the ‘etfData.RDat’ file, the same file where we saved our shapefile of the world. After loading that file, we use the exact same code from the Notebook to construct our leaflet map.
