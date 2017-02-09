@@ -1,5 +1,5 @@
 ---
-title: "Global ETF Map Paper"
+title: "Global ETF Map Talk"
 output:
   html_notebook: default
 ---
@@ -108,7 +108,7 @@ world <- readOGR("./ne_50m_admin_0_countries", 'ne_50m_admin_0_countries', verbo
 world <- ms_simplify(world)
 ```
 
-Take a peek at the dataframe portion of the shapefile, and scroll to the right to see some interesting things like GDP estimates and economic development stages. It’s pretty nice that the shapefile contains some economic data for us. The other portion of the shapefile is the spatial data: longitude and latitude coordinates. If you’re not a cartographer, don’t worry about those.
+Take a peek at the dataframe portion of the shapefile and find some interesting nuggets like GDP estimates and economic development stages. It’s nice that the shapefile contains  economic data for us. The other portion of the shapefile is the spatial data: longitude and latitude coordinates. If you’re not a cartographer, don’t worry about those.
 
 ```{r}
 # For the sake of brevity, let's look at just the first 6 countries, 
