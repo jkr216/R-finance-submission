@@ -1,6 +1,7 @@
 ---
-title: "Global ETF Map Talk"
+title: "Global ETF Map Presentation"
 output:
+  pdf_document: default
   html_notebook: default
 ---
 
@@ -8,7 +9,7 @@ In this presentation, we will construct a Shiny app that allows users to graph c
 
 From a substantive perspective, the app is simple in that it just displays price histories.  But our learnings  are diverse and broadly applicable: an introduction to the Notebooks-to-flexdashboards workflow and the reproducibility it engenders, spatial dataframe and map-making skills, adding our own stock data to a map, wiring up two HTML widgets to communicate with one another and creating a useful app for users who don't want to remember unintuitive ticker symbols.
 
-How will we get there? We are going to use two Rmarkdown files. We start with a Notebook (which we are looking at right now) for data import, wrangling, and test visualizations. Next, we use a flexdashboard to build our interactive Shiny app. We are going to save objects from the Notebook into a .Rdat file, and then use that file in our app. The Notebook is fundamentally connected to our flexdashboard. 
+How will we get there? We are going to use two Rmarkdown files. We start with a Notebook for data import, wrangling, and test visualizations. Next, we use a flexdashboard to build our interactive Shiny app. We are going to save objects from the Notebook into a .Rdat file, and then use that file in our app. The Notebook is fundamentally connected to our flexdashboard. 
 
 Let’s get to the Notebook data importing/tidying/visualizing steps.
 
@@ -26,26 +27,27 @@ Without further adieu, the ishares ETF tickers, country names and year-to-date p
 # Let's build a dataframe to store these ticker symbols, country names and YTD numbers.
 library(dplyr)
 
-ticker <-  c("EWJ",  "EWZ",  "INDA", "FXI",  "EWG",  "EWC",  "EWY",  "EWT",  "EWU",  "EWH",  "EWA",
-             "EWW",  "EWL",  "EWP", "EWS",  "EWI",  "EIDO", "ERUS", "ECH",  "EZA",  "THD",  "TUR",
+tickers <-  c("EWJ",  "EWZ",  "INDA", "FXI",  "EWG",  "EWC",  "EWY",  "EWT",  "EWU",  "EWH",  "EWA",
+             "EWW",  "EWL",  "EWP", "EWS",  "EWI", "ERUS", "EIDO", "ECH",  "EZA",  "THD",  "TUR",
              "EWD",  "EWQ",  "EWM",  "EPU",  "EWN",  "EPOL", "EPHE", "ENZL", "EIRL", "EWK",  "EIS",
-             "EWO", "EDEN", "QAT", "UAE", "EFNL", "ENOR", "ICOL", "HEWY", "KSA")
+             "EWO", "EDEN", "QAT", "UAE", "EFNL", "ENOR", "ICOL", "KSA")
 
 name <-   c("Japan", "Brazil" ,"India", "China", "Germany" , "Canada", "Korea", "Taiwan", 
               "United Kingdom", "Hong Kong", "Australia", "Mexico", "Switzerland", "Spain", 
-              "Singapore", "Italy", "Indonesia", "Russia", "Chile", "South Africa", "Thailand",  
+              "Singapore", "Italy",  "Russia", "Indonesia", "Chile", "South Africa", "Thailand",  
               "Turkey", "Sweden", "France", "Malaysia", "Peru", "Netherlands", "Poland",
               "Philippines", "New Zealand", "Ireland", "Belgium", "Israel", "Austria","Denmark",
-              "Qatar", "United Arab Emirates", "Finland", "Norway", "Colombia", "South Korea", 
+              "Qatar", "United Arab Emirates", "Finland", "Norway", "Colombia", 
               "Saudi Arabia")
 
-ytd <- c(0.0358, 0.6314, -0.0140,  0.0721, -0.0289, 0.2198,  0.0729,  0.2029, -0.0467,  0.0897,
-         0.0944, -0.1045, -0.0623, -0.0916,  0.0305, -0.1857,  0.1309,  0.3828,  0.1987,  0.1219,
-         0.2458, -0.1053, -0.0052, -0.0199, -0.0410,  0.6015,  0.0017, -0.0481, -0.0408,  0.1394,
-         -0.1183, -0.0428, -0.0432,  0.0462, -0.1078, -0.0244, 0.0570,  0.6397, -0.0146,  0.1424,
-         0.1313,  0.0751) * 100
 
-etf_ticker_country <- data_frame(ticker, name, ytd)
+ytd <-   c(5.07, 12.31, 17.48, 7.43, 16.68, 11.75, 2.33, 9.83, 4.11, 10.78, 
+           14.04, 16.5, 8.01, 12.85, 4.36, 13.85, -3.42, 6.98, 17.22, 8, 
+           9.86, 4.69, 6.06, 8.53, 8.23, 19.64, 5.56, 10.31, 6.36, 5.44, 
+           9.54, 10.75, 6.4, 5.67, 7.01, 1.55, 1.03, 5.08, 0.77, 6.85, -2.65)
+
+
+etf_ticker_country <- data_frame(tickers, name, ytd)
 
 etf_ticker_country
 ```
@@ -86,34 +88,22 @@ We have imported the adjusted prices of the country ETFs. Nothing too complicate
 
 Now it’s time to build a map of the Earth! 
 
-First, we will need a shapefile that contains the spatial polygons for the countries of the world.  
-
-The next code chunk will grab a shapefile from www.naturalearthdata.com.  That shapefile has the longitude and latitude coordinates for the world's countries and some data about them.
-
-We'll then use the readOGR() function from the 'rgdal' package to load the shapefile into our global environment.
+We will use the ne_countries() function from the rnaturalearth package to load the world shapefile and store it as an sf object.  That shapefile has the longitude and latitude coordinates for the world's countries and some useful data about them.
 
 
 ```{r, message = FALSE, warning = FALSE}
-library(rgdal)
-library(rmapshaper)
-library(httr)
-
-tmp <- tempfile()
-
-httr::GET("http://www.naturalearthdata.com/http//www.naturalearthdata.com/download/50m/cultural/ne_50m_admin_0_countries.zip", write_disk(tmp))
-
-unzip(tmp, exdir = 'ne_50m_admin_0_countries')
-
-world <- readOGR("./ne_50m_admin_0_countries", 'ne_50m_admin_0_countries', verbose = FALSE)
-world <- ms_simplify(world)
+library(rnaturalearth)
+world <- ne_countries(type = "countries", returnclass='sf')
 ```
 
-Take a peek at the dataframe portion of the shapefile and find some interesting nuggets like GDP estimates and economic development stages. It’s nice that the shapefile contains  economic data for us. The other portion of the shapefile is the spatial data: longitude and latitude coordinates. If you’re not a cartographer, don’t worry about those.
+Take a peek at some interesting nuggets like GDP estimates and economic development stages. It’s nice that the dataframe contains economic data for us. The other portion of the dataframe is the spatial data: longitude and latitude coordinates. If you’re not a cartographer, don’t worry about those but you can peek at them in the 'geometry' column.
 
-```{r}
+```{r, message = FALSE}
 # For the sake of brevity, let's look at just the first 6 countries, 
 # their GDP estimates and the stage of their economy.
-head(world@data[c('name', 'gdp_md_est', 'economy')])
+head(world[c("name", "gdp_md_est", "economy")], n = 6)
+
+#If you want to peek at the longitude and latitude, use world$geometry
 ```
 
 
@@ -158,28 +148,28 @@ leaf_world_economy
 ```
 
 
-The map looks good, but it sure would be nice if we could add the ETF ticker symbols and year-to-date data to the world spatial dataframe object - and we can! Our ‘name’ column in the ETF dataframe uses the same country naming convention as the ‘name’ column of the map, and those columns are both called ‘name’. Thus, we can use the merge() function from the ‘sp’ package to add the ETF dataframe to the spatial dataframe. This is similar to a ‘join’ using dplyr.
+The map looks good, but it sure would be nice if we could add the ETF ticker symbols and year-to-date data to the world spatial dataframe object - and we can! Our ‘name’ column in the ETF dataframe uses the same country naming convention as the ‘name’ column of the map, and those columns are both called ‘name’. Thus, we can use the merge() function from the ‘sf’ package to add the ETF dataframe to the spatial dataframe. This is similar to a ‘join’ using dplyr.
 
 The correspondence of country names wasn’t just luck - I had the benefit of having worked with this shapefile in the past, and made sure the country names matched up, and now you have the benefit of having worked with this shapefile. For any future project that incorporates a map like this, give some forethought to how data might need to be merged with the shapefile. The shapefile and the new data need a way to be matched. Country names usually work well.
 
-After the merging, the ticker symbols and year-to-date number columns will be added for each country that has a match in the ‘name’ column. For those with no match, the ‘ticker’ and ‘ytd’ columns will be filled with NA. 
+After the merging, the ticker symbols and year-to-date number columns will be added for each country that has a match in the ‘name’ column. For those with no match, the ‘tickers’ and ‘ytd’ columns will be filled with NA. 
 
 ```{r}
-library(sp)
+library(sf)
 # Once we run this line of code, our ticker symbols and ytd numbers will be added
 # to the spatial dataframe.
 
 world_etf <- merge(world, etf_ticker_country, by = "name")
 ```
 
-Now that the ytd data is added, let’s shade the different countries according to the year-to-date performance of the country EFT, instead of by GDP as we did before. A nice side benefit of this new shading scheme: if a country has no ETF, it will remain an unattractive grey.
+Now that the ytd data is added, let’s shade the different countries according to the year-to-date performance of the country EFT, instead of by GDP as we did before. Instead of blues, how about green for the good performers, red for the bad and yellow for middling. A nice side benefit of this new shading scheme: if a country has no ETF, it will remain an unattractive grey.
 
 ```{r}
 # Create a palette with different shades of blue for different
 # year-to-date performances. Previously, we shaded by 'world$gdp_md_est', now
 # we'll shade by 'world_etf$ytd'.
 
-ytdPal <- colorQuantile("Blues", world_etf$ytd, n = 20)
+ytdPal <- colorQuantile("RdYlGn", world_etf$ytd, n = 20)
 ```
 
 
@@ -207,7 +197,7 @@ leaf_world_etf <- leaflet(world_etf) %>%
                   
       # The next line of code is really important for creating the map we want to use later.       
       
-      color =~ytdPal(ytd), layerId = ~ticker, popup = ytdPopup)
+      color =~ytdPal(ytd), layerId = ~tickers, popup = ytdPopup)
 
 leaf_world_etf
 ```
@@ -245,7 +235,7 @@ load('etfData.RDat')
 # The next lines are taken straight from the Notebook. We just need
 # to rebuild that map.
 
-ytdPal <- colorQuantile("Blues", world_etf$ytd, n = 20)
+ytdPal <- colorQuantile("RdYlGn", world_etf$ytd, n = 20)
 
 ytdPopup <- paste0("<strong>Country: </strong>", 
                 world_etf$name,
@@ -260,7 +250,7 @@ leaf_world_etf <- leaflet(world_etf) %>%
                   
       # The next line of code is really important!       
       
-      color =~ytdPal(ytd), layerId = ~ticker, popup = ytdPopup)
+      color =~ytdPal(ytd), layerId = ~tickers, popup = ytdPopup)
 
 ```
 
